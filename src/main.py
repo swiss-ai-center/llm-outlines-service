@@ -1,6 +1,6 @@
 import asyncio
 import time
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from common_code.config import get_settings
@@ -25,9 +25,8 @@ settings = get_settings()
 
 
 class MyService(Service):
-    # TODO: 2. CHANGE THIS DESCRIPTION
     """
-    My service model
+    LLM Outlines service model
     """
 
     # Any additional fields must be excluded for Pydantic to work
@@ -36,20 +35,29 @@ class MyService(Service):
 
     def __init__(self):
         super().__init__(
-            # TODO: 3. CHANGE THE SERVICE NAME AND SLUG
-            name="My Service",
-            slug="my-service",
+            name="LLM Outlines",
+            slug="llm-outlines",
             url=settings.service_url,
             summary=api_summary,
             description=api_description,
             status=ServiceStatus.AVAILABLE,
-            # TODO: 4. CHANGE THE INPUT AND OUTPUT FIELDS, THE TAGS AND THE HAS_AI VARIABLE
             data_in_fields=[
                 FieldDescription(
-                    name="image",
+                    name="format",
                     type=[
-                        FieldDescriptionType.IMAGE_PNG,
-                        FieldDescriptionType.IMAGE_JPEG,
+                        FieldDescriptionType.APPLICATION_JSON,
+                    ],
+                ),
+                FieldDescription(
+                    name="prompt",
+                    type=[
+                        FieldDescriptionType.TEXT_PLAIN,
+                    ],
+                ),
+                FieldDescription(
+                    name="model_name",
+                    type=[
+                        FieldDescriptionType.TEXT_PLAIN,
                     ],
                 ),
             ],
@@ -60,12 +68,10 @@ class MyService(Service):
             ],
             tags=[
                 ExecutionUnitTag(
-                    name=ExecutionUnitTagName.IMAGE_PROCESSING,
-                    acronym=ExecutionUnitTagAcronym.IMAGE_PROCESSING,
+                    name=ExecutionUnitTagName.NATURAL_LANGUAGE_PROCESSING,
                 ),
             ],
-            has_ai=False,
-            # OPTIONAL: CHANGE THE DOCS URL TO YOUR SERVICE'S DOCS
+            has_ai=True,
             docs_url="https://docs.swiss-ai-center.ch/reference/core-concepts/service/",
         )
         self._logger = get_logger(settings)
@@ -136,18 +142,15 @@ async def lifespan(app: FastAPI):
 
 
 # TODO: 6. CHANGE THE API DESCRIPTION AND SUMMARY
-api_description = """My service
-bla bla bla...
+api_description = """Uses Outlines library to format LLM outputs.
 """
-api_summary = """My service
-bla bla bla...
+api_summary = """Uses Outlines library to format LLM outputs.
 """
 
 # Define the FastAPI application with information
-# TODO: 7. CHANGE THE API TITLE, VERSION, CONTACT AND LICENSE
 app = FastAPI(
     lifespan=lifespan,
-    title="Sample Service API.",
+    title="LLM Outlines API.",
     description=api_description,
     version="0.0.1",
     contact={
@@ -182,3 +185,27 @@ app.add_middleware(
 @app.get("/", include_in_schema=False)
 async def root():
     return RedirectResponse("/docs", status_code=301)
+
+@app.post("/process")
+async def process(format_file: UploadFile, model_name: str, prompt: str):
+    service = MyService()
+    # Read the file
+    file_content = await format_file.read()
+
+    data = {
+        "format": {
+            "data": file_content,
+            "type": "application/json",
+        },
+        "model_name": {
+            "data": model_name,
+            "type": "text/plain",
+        },
+        "prompt": {
+            "data": prompt,
+            "type": "text/plain",
+        },
+    }
+    # Process the file
+    result = service.process(data)
+    return result["result"].data
