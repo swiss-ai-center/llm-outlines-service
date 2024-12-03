@@ -69,6 +69,7 @@ class MyService(Service):
             tags=[
                 ExecutionUnitTag(
                     name=ExecutionUnitTagName.NATURAL_LANGUAGE_PROCESSING,
+                    acronym=ExecutionUnitTagAcronym.NATURAL_LANGUAGE_PROCESSING,
                 ),
             ],
             has_ai=True,
@@ -185,6 +186,7 @@ app.add_middleware(
 @app.get("/", include_in_schema=False)
 async def root():
     return RedirectResponse("/docs", status_code=301)
+
 
 @app.post("/process")
 async def process(format_file: UploadFile, model_name: str, prompt: str):
