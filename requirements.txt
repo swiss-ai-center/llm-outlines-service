@@ -1,1 +1,4 @@
 common-code[test] @ git+https://github.com/swiss-ai-center/common-code.git@main
+transformers==4.39.3
+torch==2.2.2
+outlines==0.0.46

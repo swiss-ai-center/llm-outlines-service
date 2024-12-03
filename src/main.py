@@ -20,9 +20,18 @@ from contextlib import asynccontextmanager
 
 # Imports required by the service's model
 # TODO: 1. ADD REQUIRED IMPORTS (ALSO IN THE REQUIREMENTS.TXT)
+from outlines import generate, models
+import torch
+import json
 
 settings = get_settings()
 
+if torch.cuda.is_available():
+    device = "cuda"
+elif torch.backends.mps.is_available():
+    device = "mps"
+else:
+    device = "cpu"
 
 class MyService(Service):
     """
@@ -53,13 +62,7 @@ class MyService(Service):
                     type=[
                         FieldDescriptionType.TEXT_PLAIN,
                     ],
-                ),
-                FieldDescription(
-                    name="model_name",
-                    type=[
-                        FieldDescriptionType.TEXT_PLAIN,
-                    ],
-                ),
+                )
             ],
             data_out_fields=[
                 FieldDescription(
@@ -76,19 +79,23 @@ class MyService(Service):
             docs_url="https://docs.swiss-ai-center.ch/reference/core-concepts/service/",
         )
         self._logger = get_logger(settings)
+        self._model = models.transformers("Qwen/Qwen2.5-3B-Instruct", device=device)
 
     # TODO: 5. CHANGE THE PROCESS METHOD (CORE OF THE SERVICE)
     def process(self, data):
-        # NOTE that the data is a dictionary with the keys being the field names set in the data_in_fields
-        # The objects in the data variable are always bytes. It is necessary to convert them to the desired type
-        # before using them.
-        # raw = data["image"].data
-        # input_type = data["image"].type
-        # ... do something with the raw data
+        json_schema = data["format"].data.decode("utf-8")
+        prompt = data["prompt"].data.decode("utf-8")
+        
+        # Use Outlines library to format LLM outputs
+        
+        generator = generate.json(self._model, json_schema)
+        result = generator(prompt)
+        
+        result = json.dumps(result)
 
         # NOTE that the result must be a dictionary with the keys being the field names set in the data_out_fields
         return {
-            "result": TaskData(data=..., type=FieldDescriptionType.APPLICATION_JSON)
+            "result": TaskData(data=result, type=FieldDescriptionType.APPLICATION_JSON)
         }
 
 
@@ -143,9 +150,11 @@ async def lifespan(app: FastAPI):
 
 
 # TODO: 6. CHANGE THE API DESCRIPTION AND SUMMARY
-api_description = """Uses Outlines library to format LLM outputs.
+api_description = """
+Uses Outlines library to format LLM outputs.
 """
-api_summary = """Uses Outlines library to format LLM outputs.
+api_summary = """
+Uses Outlines library to format LLM outputs.
 """
 
 # Define the FastAPI application with information
