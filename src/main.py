@@ -19,7 +19,6 @@ from common_code.common.models import FieldDescription, ExecutionUnitTag
 from contextlib import asynccontextmanager
 
 # Imports required by the service's model
-# TODO: 1. ADD REQUIRED IMPORTS (ALSO IN THE REQUIREMENTS.TXT)
 from outlines import generate, models
 import torch
 import json
@@ -32,6 +31,9 @@ elif torch.backends.mps.is_available():
     device = "mps"
 else:
     device = "cpu"
+print(f"Using device: {device}")
+model = models.transformers("Qwen/Qwen2.5-3B-Instruct", device=device)
+
 
 class MyService(Service):
     """
@@ -79,19 +81,19 @@ class MyService(Service):
             docs_url="https://docs.swiss-ai-center.ch/reference/core-concepts/service/",
         )
         self._logger = get_logger(settings)
-        self._model = models.transformers("Qwen/Qwen2.5-3B-Instruct", device=device)
+        self._model = model
 
-    # TODO: 5. CHANGE THE PROCESS METHOD (CORE OF THE SERVICE)
     def process(self, data):
         json_schema = data["format"].data.decode("utf-8")
         prompt = data["prompt"].data.decode("utf-8")
-        
+
         # Use Outlines library to format LLM outputs
-        
+
         generator = generate.json(self._model, json_schema)
         result = generator(prompt)
-        
-        result = json.dumps(result)
+
+        # json to bytes
+        result = json.dumps(result).encode("utf-8")
 
         # NOTE that the result must be a dictionary with the keys being the field names set in the data_out_fields
         return {
@@ -149,7 +151,6 @@ async def lifespan(app: FastAPI):
         await service_service.graceful_shutdown(my_service, engine_url)
 
 
-# TODO: 6. CHANGE THE API DESCRIPTION AND SUMMARY
 api_description = """
 Uses Outlines library to format LLM outputs.
 """
